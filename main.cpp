@@ -19,12 +19,14 @@ public:
     Snake();
     void handleMenuInput(SDL_Event &event);
     void handleGameInput(SDL_Event &event);
-    void renderExitScreen(SDL_Renderer *renderer);
-    void update();
+    void handleEndScreenInput(SDL_Event &event);
+   
     void render(SDL_Renderer *renderer);
     void renderMenu(SDL_Renderer *renderer);
-    void handleEndScreenInput(SDL_Event &event);
+    void renderExitScreen(SDL_Renderer *renderer);
     void loadBackground(SDL_Renderer *renderer); 
+
+    void update();
     bool checkCollision();
     void reset();
     void generateFood();
@@ -67,6 +69,7 @@ Snake::Snake() {
     textColor = {255, 255, 255, 255};
     backgroundTexture = nullptr;
     highScore = loadHighScore();
+    obstacles = {{5, 5}, {6, 5}, {7, 5},{5,6},{5,7},{5,8}};
 }
 
 void Snake::handleMenuInput(SDL_Event &event) {
@@ -136,17 +139,17 @@ void Snake::update() {
                 saveHighScore();
             }
     }
-    if (head.first < 0) {
-        head.first = screen_width / grid_size - 1;
-    } else if (head.first >= screen_width / grid_size) {
-        head.first = 0;
-    }
+    // if (head.first < 0) {
+    //     head.first = screen_width / grid_size - 1;
+    // } else if (head.first >= screen_width / grid_size) {
+    //     head.first = 0;
+    // }
 
-    if (head.second < 0) {
-        head.second = screen_height / grid_size - 1;
-    } else if (head.second >= screen_height / grid_size) {
-        head.second = 0;
-    }
+    // if (head.second < 0) {
+    //     head.second = screen_height / grid_size - 1;
+    // } else if (head.second >= screen_height / grid_size) {
+    //     head.second = 0;
+    // }
 
 
     body.insert(body.begin(), head);
@@ -188,7 +191,7 @@ void Snake::update() {
 
 void Snake::render(SDL_Renderer *renderer) {
 
-     loadBackground(renderer);
+    loadBackground(renderer);
 
     SDL_Rect foodRect = {food.first * grid_size, food.second * grid_size, grid_size, grid_size};
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
@@ -219,12 +222,18 @@ void Snake::render(SDL_Renderer *renderer) {
     SDL_Rect textRect = {10, 10, textSurface->w, textSurface->h};
     SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
 
-     std::string highScoreText = "High Score: " + std::to_string(highScore);
+    std::string highScoreText = "High Score: " + std::to_string(highScore);
     SDL_Surface *highScoreSurface = TTF_RenderText_Solid(font, highScoreText.c_str(), textColor);
     SDL_Texture *highScoreTexture = SDL_CreateTextureFromSurface(renderer, highScoreSurface);
 
     SDL_Rect highScoreRect = {10, 40, highScoreSurface->w, highScoreSurface->h};
     SDL_RenderCopy(renderer, highScoreTexture, nullptr, &highScoreRect);
+
+     for (const auto &obstacle : obstacles) {
+        SDL_Rect obstacleRect = {obstacle.first * grid_size, obstacle.second * grid_size, grid_size, grid_size};
+        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); 
+        SDL_RenderFillRect(renderer, &obstacleRect);
+    }
 
 
     SDL_FreeSurface(textSurface);
@@ -320,11 +329,10 @@ void Snake::loadBackground(SDL_Renderer *renderer) {
 
     SDL_RenderCopy(renderer, backgroundTexture, nullptr, nullptr);
 }
+
+
 bool Snake::checkCollision() {
     std::pair<int, int> head = body.front();
-
-  
-
     if (head.first < 0 || head.first >= screen_width / grid_size ||
         head.second < 0 || head.second >= screen_height / grid_size) {
         return true;
@@ -332,6 +340,12 @@ bool Snake::checkCollision() {
 
     for (auto it = body.begin() + 1; it != body.end(); ++it) {
         if (head == *it) {
+            return true;
+        }
+    }
+
+    for (const auto &obstacle : obstacles) {
+        if (head == obstacle) {
             return true;
         }
     }
@@ -344,6 +358,8 @@ void Snake::reset() {
     body.push_back({screen_width / (2 * grid_size), screen_height / (2 * grid_size)});
     direction = 1;
     generateFood();
+    obstacles = {{5, 5}, {6, 5}, {7, 5},{5,6},{5,7}};
+    gameisrunning=true;
 }
 
 void Snake::generateFood() {
@@ -400,7 +416,7 @@ int main(int argc, char *argv[]) {
         } else if (snake.phase == Snake::GAMEPLAY) {
             snake.render(renderer);
         } else if (snake.phase == Snake::COLLISION) {
-            // Render exit screen with final score
+
             snake.renderExitScreen(renderer);
            
         }
