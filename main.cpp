@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
+
+
 bool gameisrunning = true;
 const int screen_width = 800;
 const int screen_height = 600;
@@ -17,10 +19,11 @@ public:
     Snake();
     void handleMenuInput(SDL_Event &event);
     void handleGameInput(SDL_Event &event);
+    void renderExitScreen(SDL_Renderer *renderer);
     void update();
     void render(SDL_Renderer *renderer);
     void renderMenu(SDL_Renderer *renderer);
-    void renderExitScreen(SDL_Renderer *renderer);
+    void handleEndScreenInput(SDL_Event &event);
     void loadBackground(SDL_Renderer *renderer); 
     bool checkCollision();
     void reset();
@@ -41,6 +44,7 @@ private:
     std::vector<std::pair<int, int>> body;
     std::pair<int, int> food;
     std::pair<int, int> bonusFood;
+    std::vector<std::pair<int, int>> obstacles;
     int direction;
     int bonusFoodTimer =-1;
     int score=0;
@@ -124,6 +128,13 @@ void Snake::update() {
         case 3:  // left
             head.first -= 1;
             break;
+    }
+    if (checkCollision()) {
+            phase = COLLISION;
+            if (score > highScore) {
+                highScore = score;
+                saveHighScore();
+            }
     }
     if (head.first < 0) {
         head.first = screen_width / grid_size - 1;
@@ -233,19 +244,40 @@ void Snake::renderMenu(SDL_Renderer *renderer) {
     SDL_DestroyTexture(textTexture);
 }
 
-
 void Snake::renderExitScreen(SDL_Renderer *renderer) {
-    std::string exitText = "Game Over! Your Score: " + std::to_string(score);
+    std::string exitText = "Game Over! Your Score: " + std::to_string(score) +
+                           "\nHigh Score: " + std::to_string(highScore);
+
     SDL_Surface *textSurface = TTF_RenderText_Solid(font, exitText.c_str(), textColor);
     SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
 
     SDL_Rect textRect = {screen_width / 2 - textSurface->w / 2, screen_height / 2 - textSurface->h / 2,
                          textSurface->w, textSurface->h};
     SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
-   
+
     SDL_FreeSurface(textSurface);
     SDL_DestroyTexture(textTexture);
 }
+
+void Snake::handleEndScreenInput(SDL_Event &event) {
+    if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+            case SDLK_RETURN:  
+                if (phase == COLLISION) {
+                    phase = GAMEPLAY;
+                    reset();
+                }
+                break;
+            case SDLK_ESCAPE:
+                if (phase == COLLISION) {
+                    gameisrunning = false;
+                }
+                break;
+        }
+    }
+}
+
+
 
 int Snake::loadHighScore() {
     std::ifstream file(highScoreFileName);
